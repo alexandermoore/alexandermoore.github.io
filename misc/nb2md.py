@@ -30,6 +30,14 @@ def touchup_markdown(fname):
     pattern="---\n.*\n---"
     metadata = re.search(pattern, txt, re.DOTALL).group()
     txt = f"{metadata}\n{txt.replace(metadata,'')}"
+    
+    # TODO: When using $$ ... $$, you need to escape \\ to \\\.
+    #       and apparently remove newlines?
+    # https://stackoverflow.com/questions/7124778/how-can-i-match-anything-up-until-this-sequence-of-characters-in-a-regular-exp
+    pattern=r"\$\$(.+?)\$\$"
+    for t in re.findall(pattern, txt, re.DOTALL):
+        tt = t.replace("\\\\", "\\\\\\").replace("\n", " ")
+        txt = txt.replace(f"$${t}$$", f"$${tt}$$")
 
     # Escape double dollar signs
     txt = txt.replace("$$", r"\$\$")
