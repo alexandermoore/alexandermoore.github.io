@@ -2,6 +2,7 @@
 layout: post
 permalink: pca-intuition-and-math
 title: "PCA: Intuition And Math"
+description: "Uniting the intuition and the math behind PCA!"
 ---
 
 ## PCA
@@ -23,46 +24,6 @@ Take a look at the plot below:
 
 
 
-
-
 ```python
-np.dot(eigvecs[:,0], eigvecs[:,1])
-```
-
-
-
-
-    0.0
-
-
-
-
-```python
-eigvecs
-```
-
-
-
-
-    array([[ 0.65581979, -0.75491748],
-           [-0.75491748, -0.65581979]])
-
-
-
-
-```python
-plt.plot
-```
-
-
-
-
-    array([[-0.96786672, -0.25146375],
-           [ 0.25146375, -0.96786672]])
-
-
-
-
-```python
-
+print("hey")
 ```
