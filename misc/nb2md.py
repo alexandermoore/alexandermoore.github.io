@@ -1,113 +1,174 @@
-import argparse
-from nbdev.export2html import _nbdev_detach, convert_md
-import os
+import nbformat
 import re
+import os
+# import logging
+# logging.basicConfig(level=logging.DEBUG)
+from nbconvert import MarkdownExporter
+from nbconvert.writers import FilesWriter
+from nbconvert.preprocessors import TagRemovePreprocessor
+from jupyter_contrib_nbextensions.nbconvert_support.pre_pymarkdown import PyMarkdownPreprocessor
+from traitlets.config import Config
+from typing import NamedTuple
+# may need to preprocess and run nb? 
+#     https://stackoverflow.com/questions/39732784/minimal-example-of-how-to-export-a-jupyter-notebook-to-pdf-using-nbconvert-and-p
+#     https://www.mprat.org/blog/2017/03/18/blogging-with-jupyter.html
+
+class TagConfig(NamedTuple):
+    tag: str
+    block_start_tag: str
+    block_end_tag: str
 
 CURRENT_FILE = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 SITE_ROOT = os.path.abspath(os.path.join(CURRENT_FILE, ".."))
 MARKDOWN_PATH = os.path.abspath(os.path.join(SITE_ROOT, "_posts/notebook_posts"))
+DRAFTS_PATH = os.path.abspath(os.path.join(SITE_ROOT, "_drafts/notebook_posts"))
+HIDE_INPUT_TAG = TagConfig(
+    tag="HIDE_INPUT",
+    block_start_tag="HIDE_INPUT_START",
+    block_end_tag="HIDE_INPUT_END")
+HIDE_OUTPUT_TAG = TagConfig(
+    tag="HIDE_OUTPUT",
+    block_start_tag="HIDE_OUTPUT_START",
+    block_end_tag="HIDE_OUTPUT_END")
+HIDE_CELL_TAG = TagConfig(
+    tag="HIDE_CELL",
+    block_start_tag="HIDE_CELL_START",
+    block_end_tag="HIDE_CELL_END")
+DATE_PATTERN = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-"
+NB_ASSETS_DIR = "assets/notebook_files"
+
+class CommentTagRemovePreprocessor(TagRemovePreprocessor):
+    """
+    Preprocessor for removing entire cells or just their inputs/outputs.
+    Does so by recognizing specific code comments and turning them into tags,
+    which are then processed by TagRemovePreprocessor.
+    """
+    def __init__(self, hide_input_config, hide_output_config, hide_cell_config, *args, **kwargs):
+        self.enabled = True
+        self.hide_input_config = hide_input_config
+        self.hide_output_config = hide_output_config
+        self.hide_cell_config = hide_cell_config
+        super().__init__(*args, **kwargs)
+        self.remove_input_tags = [hide_input_config.tag]
+        self.remove_all_outputs_tags = [hide_output_config.tag]
+        self.remove_cell_tags = [hide_cell_config.tag]
+
+    def _apply_tag(self, cell, tag_config):
+        """
+        Applies a tag to the specified cell. Removes any tags from the
+        comments of this cell.
+        """
+        if "metadata" not in cell or "tags" not in cell["metadata"]:
+            cell["metadata"]["tags"] = cell.get("metadata", {}).get("tags", [])
+        cell["metadata"]["tags"].append(tag_config.tag)
+
+        # Remove comment indicating this tag from notebook cell
+        inp = cell.get("source", "").split("\n")[0]
+        if inp[0] == "#" and inp[1:].strip() in [tag_config.tag, tag_config.block_start_tag, tag_config.block_end_tag]:
+            cell["source"] = "\n".join(cell.get("source", "").split("\n")[1:])
+
+    def preprocess(self, nb, resources):
+        cells = nb.cells
+        tag_config_switches = {
+            self.hide_input_config: False,
+            self.hide_output_config: False,
+            self.hide_cell_config: False
+        }
+        for cell in cells:
+            inp = cell.get("source", "").split("\n")[0]
+            # Exclude hashtag
+            if len(inp) and inp[0] == "#":
+                inp = inp[1:].strip()
+
+            for config in tag_config_switches:
+                if config.block_start_tag == inp:
+                    tag_config_switches[config] = True
+                    self._apply_tag(cell, config)
+                elif config.block_end_tag == inp:
+                    tag_config_switches[config] = False
+                    self._apply_tag(cell, config)
+                elif config.tag == inp or tag_config_switches[config]:
+                    self._apply_tag(cell, config)
 
 
-def nbdev_nb2md(
-    fname:str,  # A notebook file name to convert
-    dest:str='.',  # The destination folder
-    img_path="",  # Folder to export images to
-    jekyll=False  # To use jekyll metadata for your markdown file or not
-):
-    "Convert the notebook in `fname` to a markdown file"
-    if img_path == "":
-        #img_path = dest + "/" + nb_name(fname) + "_files"
-        img_path = imgpath(fname)
-        os.makedirs(img_path, exist_ok=True)
-    _nbdev_detach(fname, dest=img_path)
-    convert_md(fname, dest, jekyll=jekyll, img_path=img_path)
-
-def touchup_markdown(fname):
-    with open(fname, "r") as f:
-        txt = f.read()
-
-    # Move metadata to top
-    pattern="---\n.*\n---"
-    metadata = re.search(pattern, txt, re.DOTALL).group()
-    txt = f"{metadata}\n{txt.replace(metadata,'')}"
-    
-    # TODO: When using $$ ... $$, you need to escape \\ to \\\.
-    #       and apparently remove newlines?
-    # https://stackoverflow.com/questions/7124778/how-can-i-match-anything-up-until-this-sequence-of-characters-in-a-regular-exp
-    pattern=r"\$\$(.+?)\$\$"
-    for t in re.findall(pattern, txt, re.DOTALL):
-        tt = t.replace("\\\\", "\\\\\\").replace("\n", " ")
-        txt = txt.replace(f"$${t}$$", f"$${tt}$$")
-
-    # Escape double dollar signs
-    txt = txt.replace("$$", r"\$\$")
+        nb.cells = cells
+        return super().preprocess(nb, resources)
 
 
-    # Fix links to be relative
-    txt = txt.replace(SITE_ROOT, "")
-    txt = txt.replace(f"nb_files/{nb_name(fname)}", f"nb_files/{nb_name(fname)}/")
+class NBExporter():
+    @staticmethod
+    def nb_name(fname):
+        return "".join(os.path.basename(fname).split('.')[:-1])
 
-    # Rewrite
-    with open(fname, "w") as f:
-        f.write(txt)
+    @staticmethod
+    def imgpath(notebook_name):
+        return os.path.abspath(os.path.join(SITE_ROOT, NB_ASSETS_DIR, notebook_name))
 
-def list_notebooks(root_dir):
-    notebooks = []
-    date_pattern = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-"
-    for root, dirs, files in os.walk(root_dir, topdown=False):
-        for name in files:
-            if name[-6:] == ".ipynb" and ".ipynb_checkpoints" not in root and re.search(date_pattern, name) is not None:
-                notebooks.append(os.path.join(root, name))
-    return notebooks
+    @staticmethod
+    def touchup_markdown(fname):
+        with open(fname, "r") as f:
+            txt = f.read()
 
-def nb_name(fname):
-    return "".join(os.path.basename(fname).split('.')[:-1])
-
-def imgpath(fname):
-    return os.path.abspath(os.path.join(SITE_ROOT, f"assets/nb_files/{nb_name(fname)}"))
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run nbdev_nb2md')
-    parser.add_argument(
-        '--fname',
-        type=str,
-        default=None
-    )
-    parser.add_argument(
-        '--dest',
-        type=str, 
-        default=MARKDOWN_PATH
-    )
-    parser.add_argument("--img_path", type=str, default=None)
-    parser.add_argument("--jekyll", action="store_true", default=None)
-    parser.add_argument("--all", action="store_true", default=None)
-    args_dict = vars(parser.parse_args())
-    # No fname means do all
-    if args_dict["fname"] is None:
-        args_dict["fname"] = os.path.abspath(os.path.join(SITE_ROOT, "src/python"))
-        args_dict["all"] = True
-    convert_all = args_dict.pop("all")
-
-    nb2md_kwargs = {k: v for k, v in args_dict.items() if v is not None}
-    img_path = args_dict["img_path"]
-    if not convert_all:
-        nbdev_nb2md(**nb2md_kwargs)
-        out_fname = os.path.join(
-            nb2md_kwargs["dest"],
-            "".join(nb_name(nb2md_kwargs["fname"])) + ".md"
-        )
-        touchup_markdown(out_fname)
-    else:
-        root_dir = nb2md_kwargs.pop("fname")
-        fnames = list_notebooks(root_dir)
-        for fname in fnames:
-            basename = nb_name(fname)
-            out_fname = os.path.join(
-                nb2md_kwargs["dest"],
-                "".join(basename) + ".md"
-            )
-            print(f"Converting:\n\t{fname}\nand saving to:\n\t{out_fname}")
-            nbdev_nb2md(fname, **nb2md_kwargs)
-            touchup_markdown(out_fname)
+        # Move metadata to top
+        pattern="---\n.*\n---"
+        metadata = re.search(pattern, txt, re.DOTALL).group()
+        txt = f"{metadata}\n{txt.replace(metadata,'')}"
         
+        # TODO: When using $$ ... $$, you need to escape \\ to \\\.
+        #       and apparently remove newlines?
+        # https://stackoverflow.com/questions/7124778/how-can-i-match-anything-up-until-this-sequence-of-characters-in-a-regular-exp
+        pattern=r"\$\$(.+?)\$\$"
+        for t in re.findall(pattern, txt, re.DOTALL):
+            tt = t.replace("\\\\", "\\\\\\").replace("\n", " ")
+            txt = txt.replace(f"$${t}$$", f"$${tt}$$")
 
+        # Escape double dollar signs
+        txt = txt.replace("$$", r"\$\$")
+
+
+        # Fix links to be relative
+        txt = txt.replace(SITE_ROOT, "")
+        txt = txt.replace(
+            os.path.join(NB_ASSETS_DIR, NBExporter.nb_name(fname)),
+            os.path.join(NB_ASSETS_DIR, NBExporter.nb_name(fname)) + "/")
+
+        # Rewrite
+        with open(fname, "w") as f:
+            f.write(txt)
+
+    def to_markdown(self, src, dest=None, draft=False, draft_replace_date="ZZ-DRAFT-"):
+        notebook_name = NBExporter.nb_name(src)
+        with open(src, "r") as f:
+            nb = nbformat.read(f, as_version=4)
+
+        if dest is None:
+            # Drafts go in _drafts folder and have no date
+            if draft:
+                dest = DRAFTS_PATH 
+                notebook_name = re.sub(DATE_PATTERN, f'{draft_replace_date}-', notebook_name)
+            else:
+                dest = MARKDOWN_PATH
+        c = Config()
+        tag_preprocessor = CommentTagRemovePreprocessor(
+            hide_cell_config=HIDE_CELL_TAG,
+            hide_input_config=HIDE_INPUT_TAG,
+            hide_output_config=HIDE_OUTPUT_TAG)
+        c.MarkdownExporter.preprocessors = [
+            tag_preprocessor,
+            PyMarkdownPreprocessor(config=c),
+        ]
+        exporter = MarkdownExporter(config=c)
+        writer = FilesWriter()
+        writer.build_directory = dest
+        # ExtractOutputPreprocessor will use this internally. It runs by default for all
+        # Exporters. See Exporter base class for list of default preprocessors (only some of which are enabled)
+        resources = {"output_files_dir": NBExporter.imgpath(notebook_name)}
+        
+        (body, resources) = exporter.from_notebook_node(nb, resources=resources)
+        writer.write(body, resources, notebook_name=notebook_name)
+        NBExporter.touchup_markdown(os.path.join(dest, notebook_name) + ".md")
+
+exp = NBExporter()
+exp.to_markdown(
+    "/home/alexm/projects/alexandermoore.github.io/src/python/2023-02-16-ROC-Vs-PR-AUC.ipynb",
+    draft=True)
