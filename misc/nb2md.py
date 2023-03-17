@@ -20,7 +20,7 @@ class TagConfig(NamedTuple):
 
 CURRENT_FILE = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 SITE_ROOT = os.path.abspath(os.path.join(CURRENT_FILE, ".."))
-MARKDOWN_PATH = os.path.abspath(os.path.join(SITE_ROOT, "_posts/notebook_posts"))
+POSTS_PATH = os.path.abspath(os.path.join(SITE_ROOT, "_posts/notebook_posts"))
 DRAFTS_PATH = os.path.abspath(os.path.join(SITE_ROOT, "_drafts/notebook_posts"))
 HIDE_INPUT_TAG = TagConfig(
     tag="HIDE_INPUT",
@@ -34,8 +34,7 @@ HIDE_CELL_TAG = TagConfig(
     tag="HIDE_CELL",
     block_start_tag="HIDE_CELL_START",
     block_end_tag="HIDE_CELL_END")
-DATE_PATTERN = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-"
-NB_ASSETS_DIR = "assets/notebook_files"
+DATE_PATTERN = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
 
 class CommentTagRemovePreprocessor(TagRemovePreprocessor):
     """
@@ -96,13 +95,25 @@ class CommentTagRemovePreprocessor(TagRemovePreprocessor):
 
 
 class NBExporter():
+    def __init__(
+        self,
+        drafts_assets_dir="assets/notebook_files/drafts",
+        posts_assets_dir="assets/notebook_files/posts",
+        drafts_path=DRAFTS_PATH,
+        posts_path=POSTS_PATH):
+        
+        self.drafts_assets_dir = drafts_assets_dir
+        self.posts_assets_dir = posts_assets_dir
+        self.drafts_path = drafts_path
+        self.posts_path = posts_path
+
     @staticmethod
     def nb_name(fname):
         return "".join(os.path.basename(fname).split('.')[:-1])
 
     @staticmethod
-    def imgpath(notebook_name):
-        return os.path.abspath(os.path.join(SITE_ROOT, NB_ASSETS_DIR, notebook_name))
+    def get_assets_path(notebook_name, assets_root):
+        return os.path.abspath(os.path.join(SITE_ROOT, assets_root, notebook_name))
 
     @staticmethod
     def touchup_markdown(fname):
@@ -128,26 +139,66 @@ class NBExporter():
 
         # Fix links to be relative
         txt = txt.replace(SITE_ROOT, "")
-        txt = txt.replace(
-            os.path.join(NB_ASSETS_DIR, NBExporter.nb_name(fname)),
-            os.path.join(NB_ASSETS_DIR, NBExporter.nb_name(fname)) + "/")
+        # txt = txt.replace(
+        #     os.path.join(assets_root, NBExporter.nb_name(fname)),
+        #     os.path.join(assets_root, NBExporter.nb_name(fname)) + "/")
 
         # Rewrite
         with open(fname, "w") as f:
             f.write(txt)
 
-    def to_markdown(self, src, dest=None, draft=False, draft_replace_date="ZZ-DRAFT-"):
-        notebook_name = NBExporter.nb_name(src)
+    @staticmethod
+    def read_notebook(src):
         with open(src, "r") as f:
-            nb = nbformat.read(f, as_version=4)
+            return nbformat.read(f, as_version=4)
 
-        if dest is None:
-            # Drafts go in _drafts folder and have no date
-            if draft:
-                dest = DRAFTS_PATH 
-                notebook_name = re.sub(DATE_PATTERN, f'{draft_replace_date}-', notebook_name)
-            else:
-                dest = MARKDOWN_PATH
+    def convert_to_markdown(self, src, notebook_name=None, date=None, draft=False):
+        """Converts a Jupyter notebook to markdown and saves it in a posts or
+        drafts directory. Makes appropriate modifications for Jekyll.
+
+        Can run on a file path or an alraedy loaded nb object. If using a nb object,
+        a notebook_name must be specified for use in the output file and directory names.
+
+        Specify date to change the prepended date in the _posts folder.
+
+        Args:
+            src: File path to nb or a nb object.
+            notebook_name: File/directory name to use when saving notebook and images.
+                Will infer from src filename by default if src is a filename.
+            date: Optional date to prepend when outputting to _posts folder. Will not be prepended anywhere else.
+                  If a date already exists in the notebook name, an error will be thrown.
+            draft: Whether to export as a draft to the draft directories. Defaults to False.
+        """
+        if type(src) == str:
+            if notebook_name is None:
+                notebook_name = NBExporter.nb_name(src)
+            nb = NBExporter.read_notebook(src)
+        # Assume it's a notebook, I should compare against actual nb type though
+        else:
+            if notebook_name is None or date is None:
+                raise ValueError("Must specify notebook_name and date if using non file path src.")
+            nb = src
+        
+        if date:
+            if not re.match(DATE_PATTERN, date):
+                raise ValueError("Date must match YYYY-MM-DD")
+            if re.match(DATE_PATTERN, notebook_name):
+                raise ValueError(f"Notebook name {notebook_name} already contains a date!")
+            notebook_name_w_date = f"{date}-{notebook_name}"
+        else:
+            if not re.match(DATE_PATTERN, notebook_name):
+                raise ValueError(
+                    f"Notebook name {notebook_name} must contain a date if 'date' is unspecified!")
+            notebook_name_w_date = notebook_name
+
+        # Drafts go in _drafts folder
+        if draft:
+            dest = self.drafts_path
+            assets_root = self.drafts_assets_dir
+        else:
+            dest = self.posts_path
+            assets_root = self.posts_assets_dir
+
         c = Config()
         tag_preprocessor = CommentTagRemovePreprocessor(
             hide_cell_config=HIDE_CELL_TAG,
@@ -157,18 +208,21 @@ class NBExporter():
             tag_preprocessor,
             PyMarkdownPreprocessor(config=c),
         ]
+
         exporter = MarkdownExporter(config=c)
         writer = FilesWriter()
         writer.build_directory = dest
+
         # ExtractOutputPreprocessor will use this internally. It runs by default for all
         # Exporters. See Exporter base class for list of default preprocessors (only some of which are enabled)
-        resources = {"output_files_dir": NBExporter.imgpath(notebook_name)}
-        
-        (body, resources) = exporter.from_notebook_node(nb, resources=resources)
-        writer.write(body, resources, notebook_name=notebook_name)
-        NBExporter.touchup_markdown(os.path.join(dest, notebook_name) + ".md")
+        resources = {"output_files_dir": NBExporter.get_assets_path(notebook_name, assets_root=assets_root)}
 
-exp = NBExporter()
-exp.to_markdown(
-    "/home/alexm/projects/alexandermoore.github.io/src/python/2023-02-16-ROC-Vs-PR-AUC.ipynb",
-    draft=True)
+
+        (body, resources) = exporter.from_notebook_node(nb, resources=resources)
+        writer.write(body, resources, notebook_name=notebook_name_w_date)
+        NBExporter.touchup_markdown(os.path.join(dest, notebook_name_w_date) + ".md")
+
+# exp = NBExporter()
+# exp.convert_to_markdown(
+#     src="/home/alexm/projects/alexandermoore.github.io/src/python/2023-02-16-ROC-Vs-PR-AUC.ipynb",
+#     draft=True)
