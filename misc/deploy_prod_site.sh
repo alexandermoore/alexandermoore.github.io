@@ -9,6 +9,5 @@ git merge master --no-edit &&
 git commit -am "merge master" &&
 git checkout master &&
 git merge dev --no-edit &&
-git commit -am "merge dev" &&
 git push origin master &&
 git checkout dev
