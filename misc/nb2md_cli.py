@@ -150,23 +150,32 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
         help="Whether to run continuously and poll files/folder for changes")
+    parser.add_argument(
+        "--no_initial_convert",
+        action="store_true",
+        default=False,
+        help="Whether to run convert initially")
     # parser.add_argument("--img_path", type=str, default=None)
     # parser.add_argument("--jekyll", action="store_true", default=None)
     # parser.add_argument("--all", action="store_true", default=None)
     #args_dict = vars(parser.parse_args())
     args = parser.parse_args()
 
-    if args.fname:
-        nb_fnames = [args.fname]
-    else:
-        nb_fnames = list_notebooks(NB_DIR)
-    print("="*30 + f"\nFound {len(nb_fnames)} notebooks\n" + "="*30)
-    num_converted = 0
-    for i, fname in enumerate(nb_fnames):
-        print("="*3 + f" ({i+1}) {fname.replace(NB_DIR + '/', '')} " + "="*3)
-        num_converted += int(convert_notebook(fname))
-    print("="*30)
-    print("="*30 + f"\nConverted {num_converted}/{len(nb_fnames)} notebooks.\n" + "="*30)
+    if args.no_initial_convert and not args.poll:
+         logging.warn("Nothing will happen since no initial convert or polling is happening.")
+
+    if not args.no_initial_convert:
+        if args.fname:
+            nb_fnames = [args.fname]
+        else:
+            nb_fnames = list_notebooks(NB_DIR)
+        print("="*30 + f"\nFound {len(nb_fnames)} notebooks\n" + "="*30)
+        num_converted = 0
+        for i, fname in enumerate(nb_fnames):
+            print("="*3 + f" ({i+1}) {fname.replace(NB_DIR + '/', '')} " + "="*3)
+            num_converted += int(convert_notebook(fname))
+        print("="*30)
+        print("="*30 + f"\nConverted {num_converted}/{len(nb_fnames)} notebooks.\n" + "="*30)
     
     if args.poll:
         print("Polling for changes...")
