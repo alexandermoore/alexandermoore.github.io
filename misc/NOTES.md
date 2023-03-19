@@ -41,3 +41,8 @@ Notebook frontmatter custom options (see `nb2md_cli.py`):
 * `_publish_`: Whether to publish this notebook, as a draft or post. If not specified, notebook is NOT published! Set to `true` or `false`.
 * `_draft`: Whether to publish this post as a draft or not (by default, it will be published as a post. Set to `true` or `false`)
 
+Run `nb2md_cli.py` to convert notebooks once, use the shortcut `run_nb2md_polling.sh` to monitor for changes and convert changed notebooks.
+
+Run `misc/build_prod_site.sh` to build the non-draft version of the site in the `_site` folder.
+
+Run `misc/deploy_prod_site.sh` to kill and nb2md_cli and jekyll instances, build prod website from scratch, and push it to master.
