@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>MLOps Cheat Sheet | Alex’s Website</title>
+<meta name="generator" content="Jekyll v3.9.2" />
+<meta property="og:title" content="MLOps Cheat Sheet" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Assorted quick notes on common ML in production situations." />
+<meta property="og:description" content="Assorted quick notes on common ML in production situations." />
+<link rel="canonical" href="http://localhost:4000/posts/cheat-sheet-mlops" />
+<meta property="og:url" content="http://localhost:4000/posts/cheat-sheet-mlops" />
+<meta property="og:site_name" content="Alex’s Website" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2023-03-19T00:00:00-04:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="MLOps Cheat Sheet" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2023-03-19T00:00:00-04:00","datePublished":"2023-03-19T00:00:00-04:00","description":"Assorted quick notes on common ML in production situations.","headline":"MLOps Cheat Sheet","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/posts/cheat-sheet-mlops"},"url":"http://localhost:4000/posts/cheat-sheet-mlops"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Alex&apos;s Website" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.12.0/katex.min.css" integrity="sha512-h7nl+xz8wgDlNM4NqKEM4F1NkIRS17M9+uJwIGwuo8vGqIl4BhuCKdxjWEINm+xyrUjNCnK5dCrhM0sj+wTIXw==" crossorigin="anonymous" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.12.0/katex.min.js" integrity="sha512-/CMIhXiDA3m2c9kzRyd97MTb3MC6OVnx4TElQ7fkkoRghwDf6gi41gaT1PwF270W6+J60uTmwgeRpNpJdRV6sg==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.12.0/contrib/auto-render.min.js" integrity="sha512-Do7uJAaHZm5OLrIv/yN4w0iG1dbu01kzdMNnFfu/mAqgUk6Nniv2JYHcwH+cNwjqgLcqcuBBk+JRvprLVI8azg==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha512-0doc9hKxR3PYwso42RD1p5ySZpzzuDiOwMrdCEh2WdJZCjcmFKc/wEnL+z8fBQrnHoiNWbo+3fiGkOYXBdQp4A==" crossorigin="anonymous"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement( document.body, {
+        delimiters: [
+            {left: "$$", right: "$$", display: true},
+            {left: "[%", right: "%]", display: true},
+            {left: "$", right: "$", display: false}
+        ]}
+        );
+    });
+    </script>
+
+</head><body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Alex&#39;s Website</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">MLOps Cheat Sheet</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2023-03-19T00:00:00-04:00" itemprop="datePublished">Mar 19, 2023
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>This is a living document, and I’m no expert :). I’m just documenting things I learn about MLOps here. I’ll include any resources I’ve found helpful at the end.</p>
+
+<h2 id="data-drift">Data Drift</h2>
+<p>Data drift occurs when the distribution of data in production changes over time. For example, a unimodal feature may become bimodal, or a power-law distributed feature may gain a thicker tail. To give a concrete example, a price feature distribution may change after the release of new and popular expensive items on an eCommerce website.</p>
+
+<h3 id="why-is-data-drift-an-issue">Why is data drift an issue?</h3>
+<p>Data drift can negatively impact model performance. A shift in the feature distribution means the input values no longer match what the model was trained on. Perhaps the model never saw very high prices during training, so its predictions on these values would be unpredictable.</p>
+
+<h3 id="how-to-monitor-for-data-drift">How to monitor for data drift?</h3>
+<p>This is often done by tracking feature distributions (and missing value counts!). Here are some ways:</p>
+<ul>
+  <li><strong>Statistical Properties</strong>: Compute statistics about the data, and compare them to those present at training time. Some statistics include:
+    <ul>
+      <li><strong>mean</strong>: A simple measure, but it does not capture many types of drift (ex. unimodal -&gt; bimodal might be missed!)</li>
+      <li><strong>variance</strong>: Another simple measure.</li>
+      <li><strong>distributional distance measure</strong>: Use a distance measure to compare the current distribution to the old one. A good general purpose one is <a href="https://en.wikipedia.org/wiki/Earth_mover%27s_distance">Earth Mover’s Distance</a> (<a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.wasserstein_distance.html">scikit implementation</a>). Here’s a <a href="https://en.wikipedia.org/wiki/Statistical_distance">list of other measures</a>.</li>
+      <li><strong>percentiles</strong> Compute percentiles on the prod distribution at the time the model was trained, and check whether the current percentiles are similar or different. If you want confidence intervals, you can use bootstrap, jack knife (sub-method of cross validation) or another <a href="https://en.wikipedia.org/wiki/Resampling_(statistics)">resampling method</a> to establish confidence intervals around these percentiles. Then, in production, check if the production percentiles fall within this interval.</li>
+    </ul>
+  </li>
+  <li><strong>Visual tracking</strong>: Compute feature histograms with some time frequency (ex. daily) and surface them in some sort of dashboard. Allow the user to compare current histograms to historical ones.
+    <ul>
+      <li>I would recommend this as a bonus addition on top of the other techniques.</li>
+    </ul>
+  </li>
+</ul>
+
+<h3 id="how-to-fix-data-drift">How to fix data drift?</h3>
+<p>A common way is to include samples from the new distribution as part of model training. This could be a model retrain from scratch, or some sort of online learning update.</p>
+
+<p>If data drift is detected, a model retrain could be kicked off automatically, or an alert could be sent to the team to investigate.</p>
+
+<h2 id="concept-drift">Concept Drift</h2>
+<p>Concept drift is when the relationship between the inputs and outputs changes. This means the model isn’t modeling the right mapping of $X -&gt; y$ anymore. For example, users may not want to buy a particular category of items anymore because a super famous YouTuber said it’s bad, so maybe features that originally correlated with purchases in that category no longer do.</p>
+
+<h3 id="why-is-concept-drift-an-issue">Why is concept drift an issue?</h3>
+<p>Since the model is no longer modeling the correct relationship between inputs and outputs, its performance will degrade. It’s like your model was born in 1855, and suddenly the year is 2023. If you ask it the fastest travel time from New York to London, it’s not going to give the right answer.</p>
+
+<h3 id="how-to-monitor-for-concept-drift">How to monitor for concept drift?</h3>
+<p>Since concept drift reflects an incorrect model, it can be measured using evaluation metrics.</p>
+<ul>
+  <li>Note that data drift can also cause metrics to go down, so having the data drift monitoring in place could help differentiate the two!</li>
+</ul>
+
+<p>Here are a couple ways of dealing with concept drift:</p>
+<ul>
+  <li><strong>Metric monitoring</strong>: Monitor metrics such as AUC, F1, etc and see if they have been decreasing over time.</li>
+  <li><strong>Prediction confidence monitoring</strong>: For classification, prediction scores measure confidence. We can monitor the average score (say, on the last day of data) and see if it has been changing over time.</li>
+</ul>
+
+<h3 id="how-to-fix-concept-drift">How to fix concept drift?</h3>
+<p>Similar to data drift, we can handle concept drift by including data which demonstrates the new $X -&gt; y$ relationship in our model. This usually means retraining the model on recent data, or updating it with some sort of online learning.</p>
+
+<h2 id="new-model-ship-decision">New Model Ship Decision</h2>
+<p>When a new model is trained, it may or may not outperform the existing one. Here are a few ways to decide whether or not to ship, and how to do it:</p>
+<ul>
+  <li><strong>Offline evaluation on recent data</strong>: Set aside recent production data and evaluate both the existing and new models on it. See if the new model performs better than the existing one.</li>
+  <li><strong>Shadow mode</strong>: Run the new model in shadow mode on production traffic. Compare the accuracy results and other important performance metrics (ex. latency) from both models over a duration. This is recommended for very important models, since it gives you a fuller picture.</li>
+  <li><strong>Slow Rollout</strong>: Roll out the new model on a small amount of traffic. If performance looks good, try increasing it bit by bit.</li>
+</ul>
+
+<h2 id="retrain-frequency">Retrain Frequency</h2>
+<p>Given data and concept drift are common, model retraining is often necessary. Here are some ways to decide how often to retrain the model:</p>
+<ul>
+  <li><strong>Dynamic based on production performance</strong>: If some model metric drops below a threshold, trigger a retrain. A retrain could also be triggered once data drift has been detected.</li>
+  <li><strong>Based on offline performance</strong>: We can do this at the time we’re training the model. The model could be trained on older data and evaluated on data up to $N$ days after that. If performance starts to degrade after $k&lt;N$ days, the model could be retrained every $k$ days.</li>
+</ul>
+
+<h2 id="resources">Resources</h2>
+<ul>
+  <li>The <em>Adventures in Machine Learning</em> podcast has helpful episodes with common problems and various solutions (I was inspired to write this post after listening!)
+    <ul>
+      <li>Spotify links to episodes I listened to on a nice walk: <a href="https://open.spotify.com/episode/4uYadREg9IIQUl409bP1Z3?si=wsNs4LIZS2OFrnXIoFemxw&amp;nd=1">Part 1</a>, <a href="https://open.spotify.com/episode/7Fwg0v3HnwCnJYQb13Rn9R?si=E1bdnX_FRReTQNnKcDw0Vg">Part 2</a>.</li>
+    </ul>
+  </li>
+  <li><a href="https://neptune.ai/blog/category/mlops">Neptune.ai’s blog</a> has some helpful posts. Here’s one on <a href="https://neptune.ai/blog/concept-drift-best-practices">data vs. concept drift</a>.</li>
+  <li><a href="https://www.shreya-shankar.com/">Shreya Shankar’s blog</a> has some useful MLOps posts as well.</li>
+</ul>
+
+  </div><a class="u-url" href="/posts/cheat-sheet-mlops" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Alex&#39;s Website</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Alex&#39;s Website</li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/alexandermoore"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username"></span></a></li><li><a href="https://www.linkedin.com/in/alexandervmoore"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#linkedin"></use></svg> <span class="username"></span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>My personal website where I write about various machine learning related things :)</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

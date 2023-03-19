@@ -5,3 +5,4 @@ git add misc/*.py
 git add misc/*.md
 git add misc/*.ipynb
 git add misc/*.sh
+git add _site/*
