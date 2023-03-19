@@ -6,6 +6,10 @@ logging.basicConfig(level=logging.WARNING)
 from dataclasses import dataclass
 from nb2md import NBExporter, DATE_PATTERN, SITE_ROOT
 from datetime import datetime
+from watchdog.observers import Observer
+import watchdog.events
+import time
+import pathlib
 
 # key: value  OR key: "value" are extracted as 2 groups: 'key' and 'value'
 FRONTMATTER_PATTERN = r'(.*):\s*"{0,1}([^"]*)"{0,1}\s*'
@@ -71,23 +75,87 @@ def convert_notebook(fname):
     exporter.convert_to_markdown(fname, notebook_name=nb_name, date=cfg.date, draft=cfg.draft)
     return True
 
+# class PollingUpdateHandler(watchdog.events.PatternMatchingEventHandler):
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self._last_converted = {}
+#         self._blocked = {}
+
+#     def _process(self, event):
+#         curr_time = time.time()
+#         # Temporary ".~" until figure out ignore_pattern issue.
+#         if ".~" in event.src_path:
+#             return
+#         # Modified event triggers twice for some reason so only update once per 2 seconds.
+#         #   maybe this: https://github.com/gorakhargosh/watchdog/issues/93
+#         if curr_time - self._last_converted.get(event.src_path, 0) <= 1:
+#             return
+#         self._last_converted[event.src_path] = curr_time
+#         print("WANT TO CONVERT", os.path.abspath(event.src_path))
+#         while self._blocked.get(event.src_path):
+#             pass
+#         self._blocked[event.src_path] = True
+#         convert_notebook(os.path.abspath(event.src_path))
+#         self._blocked[event.src_path] = False
+
+#     def on_created(self, event):
+#         self._process(event)
+#     def on_modified(self, event):
+#         self._process(event)
+        
+
+# def run_polling_updates(fname=None):
+
+#     patterns = ["*.ipynb" if not fname else os.path.relpath(fname, NB_DIR)]
+#     event_handler = PollingUpdateHandler(
+#         patterns=patterns,
+#         # .~ are some jupyter temp files
+#         ignore_patterns=[".ipynb_checkpoints", "\.\~"],
+#         ignore_directories=True)
+#     observer = Observer()
+#     observer.schedule(event_handler, NB_DIR, recursive=False)
+#     observer.start()
+#     try:
+#         while True:
+#             time.sleep(1)
+#     except KeyboardInterrupt:
+#         observer.stop()
+#     observer.join()
+
+def run_polling_updates(fname=None):
+    # I tried using watchdog but notebook file reads started coming up empty.. maybe a concurrency
+    # issue or something. This suits my needs fine.
+    fnames = [fname] if fname else list_notebooks(NB_DIR)
+    last_modified = {fname: pathlib.Path(fname).stat().st_mtime for fname in fnames}
+    while True:
+        for fname in fnames:
+            if last_modified[fname] != pathlib.Path(fname).stat().st_mtime:
+                print(f"({datetime.now().strftime(r'%m/%d %I:%M:%S %p')}) Change detected: {fname}")
+                last_modified[fname] = pathlib.Path(fname).stat().st_mtime
+                print("Conversion success?", convert_notebook(fname))
+        time.sleep(1)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Convert notebook(s) to markdown')
     parser.add_argument(
         '--fname',
         type=str,
-        default=None
-    )
+        default=None)
     parser.add_argument(
         '--dest',
         type=str, 
-        default=None
-    )
+        default=None)
+    parser.add_argument(
+        "--poll",
+        action="store_true",
+        default=False,
+        help="Whether to run continuously and poll files/folder for changes")
     # parser.add_argument("--img_path", type=str, default=None)
     # parser.add_argument("--jekyll", action="store_true", default=None)
     # parser.add_argument("--all", action="store_true", default=None)
     #args_dict = vars(parser.parse_args())
     args = parser.parse_args()
+
     if args.fname:
         nb_fnames = [args.fname]
     else:
@@ -99,3 +167,7 @@ if __name__ == "__main__":
         num_converted += int(convert_notebook(fname))
     print("="*30)
     print("="*30 + f"\nConverted {num_converted}/{len(nb_fnames)} notebooks.\n" + "="*30)
+    
+    if args.poll:
+        print("Polling for changes...")
+        run_polling_updates(args.fname)

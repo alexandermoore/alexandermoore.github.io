@@ -179,6 +179,11 @@ class NBExporter():
                 raise ValueError("Must specify notebook_name and date if using non file path src.")
             nb = src
         
+        # Remove empty last cell if it exists
+        if not nb.cells[-1].get("source", "").strip():
+            nb.cells = nb.cells[:-1]
+
+        # Handle date
         if date:
             if not re.match(DATE_PATTERN, date):
                 raise ValueError("Date must match YYYY-MM-DD")
