@@ -1,0 +1,69 @@
+---
+layout: post
+slug: cheat-sheet-mlops
+title: "MLOps Cheat Sheet"
+description: "Assorted quick notes on common ML in production situations."
+_draft: false
+_date: 2023-03-19
+_publish: true
+---
+
+This is a living document :). I'm just documenting things I learn about MLOps here. I'll include any resources I've found helpful at the end.
+
+## Data Drift
+Data drift occurs when the distribution of data in production changes over time. For example, a unimodal feature may become bimodal, or a power-law distributed feature may gain a thicker tail. To give a concrete example, a price feature distribution may change after the release of new and popular expensive items on an eCommerce website.
+
+### Why is data drift an issue?
+Data drift can negatively impact model performance. A shift in the feature distribution means the input values no longer match what the model was trained on. Perhaps the model never saw very high prices during training, so its predictions on these values would be unpredictable.
+
+### How to monitor for data drift?
+This is often done by tracking feature distributions (and missing value counts!). Here are some ways:
+* **Statistical Properties**: Compute statistics about the data, and compare them to those present at training time. Some statistics include:
+  * **mean**: A simple measure, but it does not capture many types of drift (ex. unimodal -> bimodal might be missed!)
+  * **variance**: Another simple measure.
+  * **distributional distance measure**: Use a distance measure to compare the current distribution to the old one. A good general purpose one is [Earth Mover's Distance](https://en.wikipedia.org/wiki/Earth_mover%27s_distance) ([scikit implementation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.wasserstein_distance.html)). Here's a [list of other measures](https://en.wikipedia.org/wiki/Statistical_distance).
+  * **percentiles** Compute percentiles on the prod distribution at the time the model was trained, and check whether the current percentiles are similar or different. If you want confidence intervals, you can use bootstrap, jack knife (sub-method of cross validation) or another [resampling method](https://en.wikipedia.org/wiki/Resampling_(statistics)) to establish confidence intervals around these percentiles. Then, in production, check if the production percentiles fall within this interval.
+* **Visual tracking**: Compute feature histograms with some time frequency (ex. daily) and surface them in some sort of dashboard. Allow the user to compare current histograms to historical ones.
+  * I would recommend this as a bonus addition on top of the other techniques.
+
+### How to fix data drift?
+A common way is to include samples from the new distribution as part of model training. This could be a model retrain from scratch, or some sort of online learning update.
+
+If data drift is detected, a model retrain could be kicked off automatically, or an alert could be sent to the team to investigate.
+
+## Concept Drift
+Concept drift is when the relationship between the inputs and outputs changes. This means the model isn't modeling the right mapping of $X -> y$ anymore. For example, users may not want to buy a particular category of items anymore because a super famous YouTuber said it's bad, so maybe features that originally correlated with purchases in that category no longer do.
+
+### Why is concept drift an issue?
+Since the model is no longer modeling the correct relationship between inputs and outputs, its performance will degrade. It's like your model was born in 1855, and suddenly the year is 2023. If you ask it the fastest travel time from New York to London, it's not going to give the right answer.
+
+### How to monitor for concept drift?
+Since concept drift reflects an incorrect model, it can be measured using evaluation metrics.
+* Note that data drift can also cause metrics to go down, so having the data drift monitoring in place could help differentiate the two!
+
+
+Here are a couple ways of dealing with concept drift:
+* **Metric monitoring**: Monitor metrics such as AUC, F1, etc and see if they have been decreasing over time.
+* **Prediction confidence monitoring**: For classification, prediction scores measure confidence. We can monitor the average score (say, on the last day of data) and see if it has been changing over time.
+
+
+### How to fix concept drift?
+Similar to data drift, we can handle concept drift by including data which demonstrates the new $X -> y$ relationship in our model. This usually means retraining the model on recent data, or updating it with some sort of online learning.
+
+## New Model Ship Decision
+When a new model is trained, it may or may not outperform the existing one. Here are a few ways to decide whether or not to ship, and how to do it:
+* **Offline evaluation on recent data**: Set aside recent production data and evaluate both the existing and new models on it. See if the new model performs better than the existing one.
+* **Shadow mode**: Run the new model in shadow mode on production traffic. Compare the accuracy results and other important performance metrics (ex. latency) from both models over a duration. This is recommended for very important models, since it gives you a fuller picture.
+* **Slow Rollout**: Roll out the new model on a small amount of traffic. If performance looks good, try increasing it bit by bit.
+
+## Retrain Frequency
+Given data and concept drift are common, model retraining is often necessary. Here are some ways to decide how often to retrain the model:
+* **Dynamic based on production performance**: If some model metric drops below a threshold, trigger a retrain. A retrain could also be triggered once data drift has been detected.
+* **Based on offline performance**: We can do this at the time we're training the model. The model could be trained on older data and evaluated on data up to $N$ days after that. If performance starts to degrade after $k<N$ days, the model could be retrained every $k$ days.
+
+
+## Resources
+* The *Adventures in Machine Learning* podcast has helpful episodes with common problems and various solutions (I was inspired to write this post after listening!)
+  * Spotify links to episodes I listened to on a nice walk: [Part 1](https://open.spotify.com/episode/4uYadREg9IIQUl409bP1Z3?si=wsNs4LIZS2OFrnXIoFemxw&nd=1), [Part 2](https://open.spotify.com/episode/7Fwg0v3HnwCnJYQb13Rn9R?si=E1bdnX_FRReTQNnKcDw0Vg).
+* [Neptune.ai's blog](https://neptune.ai/blog/category/mlops) has some helpful posts. Here's one on [data vs. concept drift](https://neptune.ai/blog/concept-drift-best-practices).
+* [Shreya Shankar's blog](https://www.shreya-shankar.com/) has some useful MLOps posts as well.
