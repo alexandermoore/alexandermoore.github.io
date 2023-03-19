@@ -84,11 +84,11 @@
 
 <p>Here’s an example of a typical ROC curve:</p>
 
-<p><img src="/assets/notebook_files/drafts/ROC-Vs-PR-AUC/output_3_0.png" alt="png" /></p>
+<p><img src="/assets/notebook_files/posts/ROC-Vs-PR-AUC/output_3_0.png" alt="png" /></p>
 
 <p>Each point on the line corresponds to a particular model score threshold, whereby all examples above the threshold are classified as positive and all the examples below are classified as negative. We then compute the <strong>recall</strong> and <strong>false positive rate</strong> given that threshold to get a point. The above chart was created from 50 different thresholds between 0 and 1, as you can see here:</p>
 
-<p><img src="/assets/notebook_files/drafts/ROC-Vs-PR-AUC/output_5_0.png" alt="png" /></p>
+<p><img src="/assets/notebook_files/posts/ROC-Vs-PR-AUC/output_5_0.png" alt="png" /></p>
 
 <p>The area underneath this curve is called the ROC AUC, and it is a common way of measuring model performance. A value of 1 is perfect and 0 is awful. In the above diagram, the area is <strong>0.82</strong>.</p>
 
@@ -112,7 +112,7 @@
 
 <p>Once our threshold hits 0.80, we’ve included all the positives, and our recall reaches 1. As we lower the threshold further, we start to include some negatives. The false positive rate starts to increase. But for all these different false positive rates, the recall is still 1. So as we move along the x axis, the y coordinate is always 1. In the end, we end up with a horizontal line from (0,1) to (1,1). The area under this is 1, so the ROC AUC is 1. We can see this below:</p>
 
-<p><img src="/assets/notebook_files/drafts/ROC-Vs-PR-AUC/output_9_0.png" alt="png" /></p>
+<p><img src="/assets/notebook_files/posts/ROC-Vs-PR-AUC/output_9_0.png" alt="png" /></p>
 
 <p>Similarly, consider a terrible model that scores the 1000 negative examples above the 100 positive ones:</p>
 <ul>
@@ -122,7 +122,7 @@
 
 <p>Its ROC AUC curve would look like this:</p>
 
-<p><img src="/assets/notebook_files/drafts/ROC-Vs-PR-AUC/output_11_0.png" alt="png" /></p>
+<p><img src="/assets/notebook_files/posts/ROC-Vs-PR-AUC/output_11_0.png" alt="png" /></p>
 
 <p>We again start with a high threshold of <strong>1</strong> and slowly decrease it. As we decrease the threshold, we start misclassifying those 1000 negatives as positive, which increases the false positive rate. During this time we aren’t correctly classifying any of the 100 positives yet, so all these points have y coordinate (recall) 0. By the time our threshold reaches 0.80, we have classified all 1000 negatives as positive. This means our false positive rate is 1. Dropping the threshold further starts to include more positives and recall goes up, but we don’t get any area from it since it’s a vertcal line from (1, 0) to (1, 1).</p>
 
@@ -145,7 +145,7 @@
 
 <p>Let’s keep lowering the threshold from 0.80 to 0.50. As we do this we include the 200 positives. The false positive rate stays at $\frac{350}{600}$ but recall increases. Once we hit a threshold of 0.50 we have included all 300 positives, and recall reaches 1. As we further lower the threshold, the false positive rate starts to increase again since we’re including those last 250 negatives, but recall is 1 the whole time.</p>
 
-<p><img src="/assets/notebook_files/drafts/ROC-Vs-PR-AUC/output_14_0.png" alt="png" /></p>
+<p><img src="/assets/notebook_files/posts/ROC-Vs-PR-AUC/output_14_0.png" alt="png" /></p>
 
 <p>The ROC AUC here is <strong>0.61</strong>. So not great, as we would hope.</p>
 
@@ -161,7 +161,7 @@
 
 <p>Let’s see what the curve looks like:</p>
 
-<p><img src="/assets/notebook_files/drafts/ROC-Vs-PR-AUC/output_16_0.png" alt="png" /></p>
+<p><img src="/assets/notebook_files/posts/ROC-Vs-PR-AUC/output_16_0.png" alt="png" /></p>
 
 <p>The ROC AUC here is… <strong>0.98</strong>?!</p>
 
@@ -185,7 +185,7 @@
 
 <p>A typical PR curve might look like this (it doesn’t have to though):</p>
 
-<p><img src="/assets/notebook_files/drafts/ROC-Vs-PR-AUC/output_18_0.png" alt="png" /></p>
+<p><img src="/assets/notebook_files/posts/ROC-Vs-PR-AUC/output_18_0.png" alt="png" /></p>
 
 <p>(By the way, the PR AUC of that curve is <strong>0.79</strong>).</p>
 
@@ -207,7 +207,7 @@
 
 <p>Here’s the chart:</p>
 
-<p><img src="/assets/notebook_files/drafts/ROC-Vs-PR-AUC/output_20_0.png" alt="png" /></p>
+<p><img src="/assets/notebook_files/posts/ROC-Vs-PR-AUC/output_20_0.png" alt="png" /></p>
 
 <p>The PR AUC here is a lowly <strong>0.28</strong>. Note that PR AUC has really penalized this model for misclassifying those 350 negatives as positive!</p>
 
