@@ -5,9 +5,8 @@ git commit -am "pre-deployment commit" &&
 git checkout master &&
 git pull &&
 git checkout dev &&
-git merge master --no-edit
-# git commit -am "merge master" &&
-# git checkout master &&
-# git merge dev --no-edit &&
-# git push origin master &&
-# git checkout dev
+git merge master --no-edit &&
+git checkout master &&
+git merge dev --no-edit &&
+git push origin master &&
+git checkout dev
